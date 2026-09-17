@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="#FF121218"
+    android:padding="12dp"
+    android:gravity="center_vertical">
+
+    <!-- Copertina album -->
+    <ImageView
+        android:id="@+id/notif_cover"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/outline_music_note_24" />
+
+    <!-- Titolo + artista -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp">
+
+        <TextView
+            android:id="@+id/notif_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFF8F9FA"
+            android:textSize="14sp"
+            android:fontFamily="serif"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Nessun brano" />
+
+        <TextView
+            android:id="@+id/notif_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#99F8F9FA"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="" />
+
+    </LinearLayout>
+
+    <!-- Pulsante precedente -->
+    <ImageButton
+        android:id="@+id/notif_btn_prev"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/outline_skip_previous_24"
+        android:background="@android:color/transparent"
+        android:tint="#FFF8F9FA"
+        android:contentDescription="Precedente" />
+
+    <!-- Pulsante play/pausa -->
+    <ImageButton
+        android:id="@+id/notif_btn_play_pause"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:src="@drawable/notif_play_button_bg"
+        android:background="@drawable/notif_play_button_bg"
+        android:tint="#FFF8F9FA"
+        android:contentDescription="Play/Pausa"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp" />
+
+    <!-- Pulsante successivo -->
+    <ImageButton
+        android:id="@+id/notif_btn_next"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/outline_skip_next_24"
+        android:background="@android:color/transparent"
+        android:tint="#FFF8F9FA"
+        android:contentDescription="Successivo" />
+
+</LinearLayout>

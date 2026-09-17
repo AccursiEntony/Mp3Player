@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ========================================== -->
+    <!-- PERMESSI DI ACCESSO ALLA MEMORIA E FILE    -->
+    <!-- ========================================== -->
+
+    <!-- Accesso ai file audio (Android 13+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+
+    <!-- Accesso alle immagini (Android 13+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- Accesso alla memoria esterna (Fino a Android 12) -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Accesso totale alla memoria (Usa con cautela per lo store) -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!-- ========================================== -->
+    <!-- PERMESSI DI BACKGROUND E NOTIFICHE         -->
+    <!-- ========================================== -->
+
+    <!-- Permesso generico per i servizi in foreground -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- Specifica il tipo di servizio per la riproduzione musicale (Android 14+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+
+    <!-- Permesso per mostrare le notifiche (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Impedisce al processore di andare in sleep durante la riproduzione -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- ========================================== -->
+    <!-- CONFIGURAZIONE APPLICAZIONE                -->
+    <!-- ========================================== -->
+    <application
+        android:name=".Mp3PlayerApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Mp3Player">
+
+        <!-- Schermata principale (Activity di avvio) bloccata in verticale -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            tools:ignore="LockedOrientation"
+            android:theme="@style/Theme.Mp3Player">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Servizio per la riproduzione musicale in background -->
+        <service
+            android:name=".player.PlayerNotificationService"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Widget della schermata Home e relativi comandi rapidi -->
+        <receiver
+            android:name=".widget.PlayerWidget"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <!-- Azioni personalizzate per il controllo del player dal Widget -->
+                <action android:name="com.example.mp3player.widget.PLAY_PAUSE" />
+                <action android:name="com.example.mp3player.widget.NEXT" />
+                <action android:name="com.example.mp3player.widget.PREVIOUS" />
+                <action android:name="com.example.mp3player.widget.SHUFFLE" />
+                <action android:name="com.example.mp3player.widget.REPEAT" />
+                <action android:name="com.example.mp3player.widget.UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/player_widget_info" />
+        </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+</manifest>
