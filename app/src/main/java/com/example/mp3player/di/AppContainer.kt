@@ -66,9 +66,5 @@ class AppContainer(context: Context) {
     val playerController: Media3PlayerController =
         Media3PlayerController(context, queueRepository, exoPlayer, playStatsRepository)
 
-    init {
-        context.startService(Intent(context, PlayerNotificationService::class.java))
-    }
-
 
 }

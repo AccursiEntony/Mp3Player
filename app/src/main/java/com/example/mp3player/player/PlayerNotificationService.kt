@@ -30,10 +30,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import com.example.mp3player.widget.WidgetArtCache
-
 class PlayerNotificationService : Service() {
 
     companion object {
@@ -57,6 +56,9 @@ class PlayerNotificationService : Service() {
 
     private lateinit var playerController: Media3PlayerController
 
+    // true solo se startForeground() è andato a buon fine
+    private var foregroundStarted = false
+
     private var lastAlbumArtUri: String? = null
     private var cachedBitmap: Bitmap?    = null
 
@@ -72,7 +74,13 @@ class PlayerNotificationService : Service() {
 
         createNotificationChannel()
         initMediaSession()
-        startForegroundCompat()
+
+        // Se il sistema non permette il foreground (app in background) ci fermiamo
+        // in silenzio invece di far crashare il processo.
+        if (!startForegroundSafely()) {
+            stopSelf()
+            return
+        }
         observePlaybackState()
 
         // Forza aggiornamento immediato con lo stato attuale
@@ -82,12 +90,17 @@ class PlayerNotificationService : Service() {
                 val bitmap = loadAlbumArt(currentState.currentSong?.albumArtUri)
                 val notification = buildNotification(currentState.currentSong, currentState.isPlaying, bitmap)
                 notificationManager.notify(NOTIFICATION_ID, notification)
-                sendWidgetUpdate(currentState, bitmap)
             }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Servizio non andato in foreground: niente da fare, ci fermiamo.
+        if (!foregroundStarted) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         when (intent?.action) {
             ACTION_PLAY_PAUSE -> playerController.togglePlayPause()
             ACTION_NEXT       -> playerController.skipNext()
@@ -104,14 +117,17 @@ class PlayerNotificationService : Service() {
             }
         }
 
-        return START_STICKY
+        // NOT_STICKY: se il sistema uccide il processo non ha senso farlo ripartire
+        // in background (lo stato di riproduzione è perso e il foreground verrebbe rifiutato).
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         stateJob?.cancel()
-        mediaSession.release()
+        serviceScope.cancel()
+        if (::mediaSession.isInitialized) mediaSession.release()
         super.onDestroy()
     }
 
@@ -160,28 +176,33 @@ class PlayerNotificationService : Service() {
     }
 
     /**
-     * FIX principale per la notifica non funzionante su Android 14+.
-     *
-     * Android 14 (API 34) richiede che startForeground dichiari il
-     * foregroundServiceType corrispondente a quello nel Manifest.
-     * ServiceCompat.startForeground gestisce questa differenza tra versioni
-     * in modo sicuro senza richiedere un if/else manuale.
-     *
-     * Nel Manifest devi avere:
-     *   <service android:name=".player.PlayerNotificationService"
-     *       android:foregroundServiceType="mediaPlayback" />
+     * Passa il servizio in foreground. Ritorna false se il sistema lo rifiuta
+     * (tipicamente perché l'app è in background su Android 12+).
+     * Il tipo mediaPlayback deve coincidere con quello dichiarato nel Manifest.
      */
-    private fun startForegroundCompat() {
-        val notification = buildNotification(null, false, null)
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            notification,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-            else
-                0
-        )
+    private fun startForegroundSafely(): Boolean {
+        val state = playerController.state.value
+        val notification = buildNotification(state.currentSong, state.isPlaying, null)
+        return try {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                notification,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                else
+                    0
+            )
+            foregroundStarted = true
+            true
+        } catch (e: IllegalStateException) {
+            // Include ForegroundServiceStartNotAllowedException (Android 12+):
+            // l'app è in background e il sistema rifiuta il foreground.
+            false
+        } catch (e: SecurityException) {
+            // Tipo di foreground service o permesso non consentiti in questo momento.
+            false
+        }
     }
 
     // =========================================================================
@@ -209,8 +230,6 @@ class PlayerNotificationService : Service() {
                 val bitmap       = loadAlbumArt(state.currentSong?.albumArtUri)
                 val notification = buildNotification(state.currentSong, state.isPlaying, bitmap)
                 notificationManager.notify(NOTIFICATION_ID, notification)
-
-                sendWidgetUpdate(state, bitmap)
             }
         }
     }
@@ -346,30 +365,6 @@ class PlayerNotificationService : Service() {
         } catch (e: Exception) {
             null
         }
-    }
-
-    private fun sendWidgetUpdate(
-        state: com.example.mp3player.player.PlaybackState,
-        bitmap: Bitmap?
-    ) {
-        val durationMs = state.currentSong?.duration ?: 0L
-        val progress = if (durationMs > 0L)
-            ((state.currentPositionMs.toFloat() / durationMs) * 1000).toInt()
-        else 0
-
-        WidgetArtCache.bitmap = bitmap
-
-        val intent = Intent(this, com.example.mp3player.widget.PlayerWidget::class.java).apply {
-            action = com.example.mp3player.widget.PlayerWidget.ACTION_UPDATE_WIDGET
-            putExtra(com.example.mp3player.widget.PlayerWidget.EXTRA_TITLE,        state.currentSong?.title  ?: "Nessun brano")
-            putExtra(com.example.mp3player.widget.PlayerWidget.EXTRA_ARTIST,       state.currentSong?.artist ?: "")
-            putExtra(com.example.mp3player.widget.PlayerWidget.EXTRA_IS_PLAYING,   state.isPlaying)
-            putExtra(com.example.mp3player.widget.PlayerWidget.EXTRA_PROGRESS,     progress)
-            putExtra(com.example.mp3player.widget.PlayerWidget.EXTRA_PROGRESS_MAX, 1000)
-            putExtra(com.example.mp3player.widget.PlayerWidget.EXTRA_SHUFFLE,      state.isShuffleEnabled)
-            putExtra(com.example.mp3player.widget.PlayerWidget.EXTRA_REPEAT,       state.isRepeatEnabled)
-        }
-        sendBroadcast(intent)
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {

@@ -69,25 +69,6 @@
             android:name=".player.PlayerNotificationService"
             android:foregroundServiceType="mediaPlayback" />
 
-        <!-- Widget della schermata Home e relativi comandi rapidi -->
-        <receiver
-            android:name=".widget.PlayerWidget"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <!-- Azioni personalizzate per il controllo del player dal Widget -->
-                <action android:name="com.example.mp3player.widget.PLAY_PAUSE" />
-                <action android:name="com.example.mp3player.widget.NEXT" />
-                <action android:name="com.example.mp3player.widget.PREVIOUS" />
-                <action android:name="com.example.mp3player.widget.SHUFFLE" />
-                <action android:name="com.example.mp3player.widget.REPEAT" />
-                <action android:name="com.example.mp3player.widget.UPDATE" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/player_widget_info" />
-        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

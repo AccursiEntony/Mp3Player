@@ -21,6 +21,7 @@ import android.content.Intent
 import com.example.mp3player.player.PlayerNotificationService
 import com.example.mp3player.data.repository.PlayStatsRepository
 import kotlinx.coroutines.Job
+import androidx.core.content.ContextCompat
 /** Gestisce la riproduzione delle canzoni. */
 class Media3PlayerController(
     context: Context,
@@ -189,11 +190,14 @@ class Media3PlayerController(
     }
 
     private fun ensureServiceStarted() {
-        val intent = Intent(appContext, PlayerNotificationService::class.java)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            appContext.startForegroundService(intent)
-        } else {
-            appContext.startService(intent)
+        try {
+            ContextCompat.startForegroundService(
+                appContext,
+                Intent(appContext, PlayerNotificationService::class.java)
+            )
+        } catch (e: IllegalStateException) {
+            // App in background (es. fine brano a schermo spento) e servizio non attivo:
+            // la musica continua, solo senza notifica.
         }
     }
     // Loop periodico per aggiornare la barra di avanzamento (ogni 250ms)
@@ -214,7 +218,7 @@ class Media3PlayerController(
                         playStatsRepository.registerPlay(song)
                     }
                 }
-                delay(250L)
+                delay(if (exoPlayer.isPlaying) 250L else 1_000L)
             }
         }
     }
